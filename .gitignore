@@ -1,6 +1,9 @@
-*.tfstate
-*.tfstate.*
-*.backup
-*.hcl
 .terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.tfplan
+*.hcl
 key.json
+*.pem
+*.key

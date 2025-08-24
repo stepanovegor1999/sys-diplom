@@ -2,24 +2,24 @@
   hosts: kibana
   become: yes
   vars:
-    elastic_httphost: "192.168.10.34:9200"
+    elastic_httphost: "elastic.ru-central1.internal:9200"
   tasks:
 
-  - name: Установка пакета kibana
-    apt:
-      deb: "https://mirror.yandex.ru/mirrors/elastic/7/pool/main/k/kibana/kibana-7.9.3-amd64.deb"
+    - name: Установка пакета kibana
+      apt:
+        deb: "https://mirror.yandex.ru/mirrors/elastic/7/pool/main/k/kibana/kibana-7.9.3-amd64.deb"
 
-  - name: Разворачиваем конфигурацию kibana
-    template:
-      src: /mnt/c/sys-diplom/cloud-terraform/ansible/kibana.j2
-      dest: /etc/kibana/kibana.yml
+    - name: Разворачиваем конфигурацию kibana
+      template:
+        src: /mnt/c/sys-diplom/cloud-terraform/ansible/kibana.j2
+        dest: /etc/kibana/kibana.yml
 
-  - name: Обновляем systemd
-    systemd:
-      daemon_reload: true
+    - name: Обновляем systemd
+      systemd:
+        daemon_reload: true
 
-  - name: Перезапускаем kibana
-    service:
-      name: kibana
-      state: restarted
-      enabled: yes
+    - name: Перезапускаем kibana
+      service:
+        name: kibana
+        state: restarted
+        enabled: yes
