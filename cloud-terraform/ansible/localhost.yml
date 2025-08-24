@@ -1,0 +1,9 @@
+- name: Генерация нагрузки на nginx
+  hosts: web
+  become: yes
+  tasks:
+    - name: Делаем 50 запросов к nginx
+      shell: |
+        for i in $(seq 1 50); do
+          curl -s -o /dev/null -w "%{http_code}\n" http://localhost/
+        done

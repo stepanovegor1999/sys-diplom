@@ -1,0 +1,194 @@
+- name: Установка Zabbix Server с веб-интерфейсом (PostgreSQL)
+  hosts: zabbix-server
+  become: yes
+  vars:
+    db_name: zabbix
+    db_user: zabbix
+    db_password: "zabbix123"
+    zabbix_version: "7.4"
+    ubuntu_version: "24.04"
+    zabbix_repo: "https://repo.zabbix.com/zabbix/{{ zabbix_version }}/release/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_{{ zabbix_version }}+ubuntu{{ ubuntu_version }}_all.deb"
+    public_ip: "<PUBLIC_IP>"
+
+  tasks:
+    # -------------------------------
+    # Базовые пакеты и PostgreSQL
+    # -------------------------------
+    - name: Установка зависимостей и PostgreSQL
+      apt:
+        name:
+          - acl
+          - python3-psycopg2
+          - software-properties-common
+          - postgresql
+          - postgresql-contrib
+        state: present
+        update_cache: yes
+
+    - name: Запуск PostgreSQL
+      service:
+        name: postgresql
+        state: started
+        enabled: yes
+
+    # -------------------------------
+    # Репозиторий Zabbix
+    # -------------------------------
+    - name: Установка Zabbix репозитория
+      apt:
+        deb: "{{ zabbix_repo }}"
+        update_cache: yes
+
+    # -------------------------------
+    # Установка Zabbix и PHP
+    # -------------------------------
+    - name: Установка Zabbix Server, агент и PHP
+      apt:
+        name:
+          - zabbix-server-pgsql
+          - zabbix-frontend-php
+          - zabbix-apache-conf
+          - zabbix-sql-scripts
+          - zabbix-agent
+          - php8.3-pgsql
+          - php8.3-gd
+          - php8.3-xml
+          - php8.3-bcmath
+          - php8.3-mbstring
+          - php8.3-ldap
+          - php8.3-curl
+        state: present
+        update_cache: yes
+
+    # -------------------------------
+    # PostgreSQL: база и пользователь
+    # -------------------------------
+    - name: Создание пользователя и базы данных
+      become_user: postgres
+      block:
+        - postgresql_user:
+            name: "{{ db_user }}"
+            password: "{{ db_password }}"
+            role_attr_flags: "LOGIN,CREATEDB"
+            state: present
+        - postgresql_db:
+            name: "{{ db_name }}"
+            owner: "{{ db_user }}"
+            encoding: UTF8
+            lc_collate: 'C.UTF-8'
+            lc_ctype: 'C.UTF-8'
+            template: template0
+            state: present
+
+    - name: Импорт схемы БД Zabbix
+      become_user: postgres
+      command: >
+        bash -c "zcat /usr/share/zabbix/sql-scripts/postgresql/server.sql.gz | psql -d {{ db_name }}"
+      args:
+        creates: "/var/lib/postgresql/16/main/{{ db_name }}.pid"
+
+    - name: Настройка прав доступа PostgreSQL
+      become_user: postgres
+      postgresql_query:
+        db: "{{ db_name }}"
+        query: |
+          GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO {{ db_user }};
+          GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO {{ db_user }};
+          GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO {{ db_user }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO {{ db_user }};
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO {{ db_user }};
+
+    # -------------------------------
+    # Настройка PHP и Zabbix
+    # -------------------------------
+    - name: Настройка PHP timezone и конфиг Zabbix
+      block:
+        - lineinfile:
+            path: /etc/php/8.3/apache2/php.ini
+            regexp: '^;?date.timezone ='
+            line: "date.timezone = Europe/Moscow"
+        - blockinfile:
+            path: /etc/zabbix/zabbix_server.conf
+            block: |
+              DBHost=localhost
+              DBName={{ db_name }}
+              DBUser={{ db_user }}
+              DBPassword={{ db_password }}
+              DBPort=5432
+            marker: "# {mark} ANSIBLE MANAGED BLOCK - ZABBIX DB CONFIG"
+        - file:
+            path: /etc/zabbix/zabbix_server.conf
+            owner: root
+            group: zabbix
+            mode: 0640
+      notify:
+        - restart apache
+        - restart zabbix-server
+
+    # -------------------------------
+    # Настройка Apache
+    # -------------------------------
+    - name: Настройка виртуального хоста и включение сайта
+      block:
+        - copy:
+            dest: /etc/apache2/sites-available/zabbix.conf
+            content: |
+              <VirtualHost *:80>
+                ServerName {{ public_ip }}
+                DocumentRoot /usr/share/zabbix/ui
+                <Directory "/usr/share/zabbix/ui">
+                  Options FollowSymLinks
+                  AllowOverride None
+                  Require all granted
+                </Directory>
+                ErrorLog ${APACHE_LOG_DIR}/zabbix_error.log
+                CustomLog ${APACHE_LOG_DIR}/zabbix_access.log combined
+              </VirtualHost>
+        - file:
+            src: /etc/apache2/sites-available/zabbix.conf
+            dest: /etc/apache2/sites-enabled/zabbix.conf
+            state: link
+        - file:
+            path: /etc/apache2/sites-enabled/000-default.conf
+            state: absent
+      notify: restart apache
+
+    # -------------------------------
+    # Firewall
+    # -------------------------------
+    - name: Открытие портов в ufw
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop: [80, 10050, 10051]
+
+    # -------------------------------
+    # Сервисы
+    # -------------------------------
+    - name: Включение сервисов
+      systemd:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop:
+        - apache2
+        - zabbix-server
+        - zabbix-agent
+
+    - name: Ожидание запуска Zabbix server
+      wait_for:
+        port: 10051
+        host: 127.0.0.1
+        timeout: 60
+
+  handlers:
+    - name: restart apache
+      service:
+        name: apache2
+        state: restarted
+
+    - name: restart zabbix-server
+      service:
+        name: zabbix-server
+        state: restarted

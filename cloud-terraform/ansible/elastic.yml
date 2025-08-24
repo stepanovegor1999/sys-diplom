@@ -1,0 +1,25 @@
+---
+- name: Установка Elastic
+  hosts: elasticsearch
+  become: yes
+  gather_facts: true
+
+  tasks:
+  - name: Установка elasticsearch
+    apt:
+      deb: "https://mirror.yandex.ru/mirrors/elastic/7/pool/main/e/elasticsearch/elasticsearch-7.9.3-amd64.deb"
+
+  - name: Разворачиваем конфигурацию elasticsearch
+    copy:
+      src: /mnt/c/cloud-terraform/ansible/elastic_conf.yml
+      dest: /etc/elasticsearch/elasticsearch.yml
+
+  - name: Обновляем systemd
+    systemd:
+      daemon_reload: true
+
+  - name: Перезапускаем elasticsearch
+    service:
+      name: elasticsearch
+      state: restarted
+      enabled: yes

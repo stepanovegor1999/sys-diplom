@@ -1,0 +1,35 @@
+- name: Установка и настройка веб-сервера Nginx
+  hosts: web
+  become: yes
+  vars:
+    site_title: "Netology Diplom"
+    site_body: "Netology Diplom"
+
+  tasks:
+
+    - name: Установить Nginx
+      apt:
+        name: nginx
+        state: latest
+        update_cache: yes
+
+    - name: Запуск Nginx
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Развертывание главной страницы
+      template:
+        src: index.html.j2
+        dest: /var/www/html/index.html
+        owner: www-data
+        group: www-data
+        mode: '0644'
+      notify: Restart Nginx
+
+  handlers:
+    - name: Restart Nginx
+      service:
+        name: nginx
+        state: restarted

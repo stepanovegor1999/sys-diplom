@@ -1,0 +1,32 @@
+- name: Установка Filebeat
+  hosts: web
+  become: yes
+  gather_facts: true
+  vars:
+    kibana_host: 158.160.107.53:5601
+    elastic_host: 192.168.10.34:9200
+  tasks:
+  - name: Устанавливаем filebeat
+    apt:
+      deb: "https://mirror.yandex.ru/mirrors/elastic/7/pool/main/f/filebeat/filebeat-7.9.3-amd64.deb"
+
+  - name: Разворачиваем конфигурацию Filebeat
+    template:
+      src: /mnt/c/cloud-terraform/ansible/filebeat.j2
+      dest: /etc/filebeat/filebeat.yml
+
+  - name: Загружаем дашборды и шаблоны в Kibana
+    command: filebeat setup --dashboards -e
+    environment:
+      KIBANA_HOST: "{{ kibana_host }}"
+      ELASTICSEARCH_HOST: "{{ elastic_host }}"
+
+  - name: Обновляем systemd
+    systemd:
+      daemon_reload: true
+
+  - name: Перезапускаем filebeat
+    service:
+      name: filebeat
+      state: restarted
+      enabled: yes

@@ -1,0 +1,228 @@
+# ===========================================
+# Zabbix Server with Web Interface
+# ===========================================
+- name: Install Zabbix Server with web interface
+  hosts: zabbix-server
+  become: yes
+  vars:
+    db_name: zabbix
+    db_user: zabbix
+    db_password: zabbix123
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Apache, PHP, MySQL server and client
+      ansible.builtin.apt:
+        name:
+          - apache2
+          - php
+          - php-mysql
+          - mysql-server
+          - wget
+        state: present
+
+    - name: Install Python MySQL library for Ansible
+      ansible.builtin.apt:
+        name:
+          - python3-pymysql
+          - python3
+          - python3-dev
+          - libmysqlclient-dev
+        state: present
+
+    - name: Download Zabbix repo package
+      ansible.builtin.get_url:
+        url: "https://repo.zabbix.com/zabbix/7.4/release/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_7.4+ubuntu24.04_all.deb"
+        dest: /tmp/zabbix-release.deb
+
+    - name: Install Zabbix repo
+      ansible.builtin.apt:
+        deb: /tmp/zabbix-release.deb
+
+    - name: Update apt cache after repo install
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Zabbix server, frontend, SQL scripts and agent
+      ansible.builtin.apt:
+        name:
+          - zabbix-server-mysql
+          - zabbix-frontend-php
+          - zabbix-apache-conf
+          - zabbix-sql-scripts
+          - zabbix-agent
+        state: present
+
+    - name: Create Zabbix database
+      community.mysql.mysql_db:
+        name: "{{ db_name }}"
+        state: present
+
+    - name: Create Zabbix database user
+      community.mysql.mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_password }}"
+        priv: "{{ db_name }}.*:ALL"
+        host: "localhost"
+        state: present
+
+    - name: Import initial schema and data
+      ansible.builtin.command: >
+        zcat /usr/share/doc/zabbix-sql-scripts/mysql/create.sql.gz | mysql -u {{ db_user }} -p{{ db_password }} {{ db_name }}
+      args:
+        creates: "/var/lib/mysql/{{ db_name }}/"
+
+    - name: Configure Zabbix server DB connection
+      ansible.builtin.lineinfile:
+        path: /etc/zabbix/zabbix_server.conf
+        regexp: '^DBName='
+        line: "DBName={{ db_name }}"
+
+    - name: Set DBUser
+      ansible.builtin.lineinfile:
+        path: /etc/zabbix/zabbix_server.conf
+        regexp: '^DBUser='
+        line: "DBUser={{ db_user }}"
+
+    - name: Set DBPassword
+      ansible.builtin.lineinfile:
+        path: /etc/zabbix/zabbix_server.conf
+        regexp: '^DBPassword='
+        line: "DBPassword={{ db_password }}"
+
+    - name: Ensure Zabbix server is running
+      ansible.builtin.service:
+        name: zabbix-server
+        state: started
+        enabled: yes
+
+    - name: Ensure Apache is running
+      ansible.builtin.service:
+        name: apache2
+        state: started
+        enabled: yes
+
+    - name: Ensure Zabbix agent is running
+      ansible.builtin.service:
+        name: zabbix-agent
+        state: started
+        enabled: yes
+
+
+# ===========================================
+# Web servers with Nginx and Zabbix Agent
+# ===========================================
+- name: Install Nginx and Zabbix Agent on web servers
+  hosts: web
+  become: yes
+  vars:
+    zabbix_server: "51.250.6.230"  # публичный IP Zabbix Server
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install Nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+
+    - name: Ensure Nginx service is running
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Download Zabbix repo package
+      ansible.builtin.get_url:
+        url: "https://repo.zabbix.com/zabbix/7.4/release/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_7.4+ubuntu24.04_all.deb"
+        dest: /tmp/zabbix-release.deb
+
+    - name: Install Zabbix repo
+      ansible.builtin.apt:
+        deb: /tmp/zabbix-release.deb
+
+    - name: Update apt cache after repo install
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Zabbix agent
+      ansible.builtin.apt:
+        name: zabbix-agent
+        state: present
+
+    - name: Configure Zabbix agent Server
+      ansible.builtin.lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: '^Server='
+        line: "Server={{ zabbix_server }}"
+        state: present
+
+    - name: Configure Zabbix agent Hostname
+      ansible.builtin.lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: '^Hostname='
+        line: "Hostname={{ inventory_hostname }}"
+        state: present
+
+    - name: Ensure Zabbix agent service is running
+      ansible.builtin.service:
+        name: zabbix-agent
+        state: started
+        enabled: yes
+
+
+# ===========================================
+# Bastion with Zabbix Agent
+# ===========================================
+- name: Install Zabbix Agent on bastion
+  hosts: bastion
+  become: yes
+  vars:
+    zabbix_server: "51.250.6.230"  # публичный IP Zabbix Server
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Download Zabbix repo package
+      ansible.builtin.get_url:
+        url: "https://repo.zabbix.com/zabbix/7.4/release/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_7.4+ubuntu24.04_all.deb"
+        dest: /tmp/zabbix-release.deb
+
+    - name: Install Zabbix repo
+      ansible.builtin.apt:
+        deb: /tmp/zabbix-release.deb
+
+    - name: Update apt cache after repo install
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Zabbix agent
+      ansible.builtin.apt:
+        name: zabbix-agent
+        state: present
+
+    - name: Configure Zabbix agent Server
+      ansible.builtin.lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: '^Server='
+        line: "Server={{ zabbix_server }}"
+        state: present
+
+    - name: Configure Zabbix agent Hostname
+      ansible.builtin.lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: '^Hostname='
+        line: "Hostname={{ inventory_hostname }}"
+        state: present
+
+    - name: Ensure Zabbix agent service is running
+      ansible.builtin.service:
+        name: zabbix-agent
+        state: started
+        enabled: yes
