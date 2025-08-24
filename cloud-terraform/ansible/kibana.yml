@@ -11,7 +11,7 @@
 
   - name: Разворачиваем конфигурацию kibana
     template:
-      src: /mnt/c/cloud-terraform/ansible/kibana.j2
+      src: /mnt/c/sys-diplom/cloud-terraform/ansible/kibana.j2
       dest: /etc/kibana/kibana.yml
 
   - name: Обновляем systemd

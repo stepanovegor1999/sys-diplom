@@ -12,7 +12,7 @@
 
   - name: Разворачиваем конфигурацию Filebeat
     template:
-      src: /mnt/c/cloud-terraform/ansible/filebeat.j2
+      src: /mnt/c/sys-diplom/cloud-terraform/ansible/filebeat.j2
       dest: /etc/filebeat/filebeat.yml
 
   - name: Загружаем дашборды и шаблоны в Kibana

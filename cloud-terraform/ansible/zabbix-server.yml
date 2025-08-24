@@ -11,9 +11,6 @@
     public_ip: "<PUBLIC_IP>"
 
   tasks:
-    # -------------------------------
-    # Базовые пакеты и PostgreSQL
-    # -------------------------------
     - name: Установка зависимостей и PostgreSQL
       apt:
         name:
@@ -31,17 +28,11 @@
         state: started
         enabled: yes
 
-    # -------------------------------
-    # Репозиторий Zabbix
-    # -------------------------------
     - name: Установка Zabbix репозитория
       apt:
         deb: "{{ zabbix_repo }}"
         update_cache: yes
 
-    # -------------------------------
-    # Установка Zabbix и PHP
-    # -------------------------------
     - name: Установка Zabbix Server, агент и PHP
       apt:
         name:
@@ -60,9 +51,6 @@
         state: present
         update_cache: yes
 
-    # -------------------------------
-    # PostgreSQL: база и пользователь
-    # -------------------------------
     - name: Создание пользователя и базы данных
       become_user: postgres
       block:
@@ -98,9 +86,7 @@
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO {{ db_user }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO {{ db_user }};
 
-    # -------------------------------
-    # Настройка PHP и Zabbix
-    # -------------------------------
+
     - name: Настройка PHP timezone и конфиг Zabbix
       block:
         - lineinfile:
@@ -125,9 +111,6 @@
         - restart apache
         - restart zabbix-server
 
-    # -------------------------------
-    # Настройка Apache
-    # -------------------------------
     - name: Настройка виртуального хоста и включение сайта
       block:
         - copy:
@@ -153,9 +136,6 @@
             state: absent
       notify: restart apache
 
-    # -------------------------------
-    # Firewall
-    # -------------------------------
     - name: Открытие портов в ufw
       ufw:
         rule: allow
@@ -163,9 +143,6 @@
         proto: tcp
       loop: [80, 10050, 10051]
 
-    # -------------------------------
-    # Сервисы
-    # -------------------------------
     - name: Включение сервисов
       systemd:
         name: "{{ item }}"

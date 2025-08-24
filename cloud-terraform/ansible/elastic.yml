@@ -11,7 +11,7 @@
 
   - name: Разворачиваем конфигурацию elasticsearch
     copy:
-      src: /mnt/c/cloud-terraform/ansible/elastic_conf.yml
+      src: /mnt/c/sys-diplom/cloud-terraform/ansible/elastic_conf.yml
       dest: /etc/elasticsearch/elasticsearch.yml
 
   - name: Обновляем systemd
