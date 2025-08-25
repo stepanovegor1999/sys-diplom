@@ -22,6 +22,7 @@ Zabbix: http://62.84.124.214
 Используйте набор статичных файлов для сайта. Можно переиспользовать сайт из домашнего задания.
 
 РЕШЕНИЕ:
+
 <img width="378" height="360" alt="nginx-ansible" src="https://github.com/user-attachments/assets/57d6e2ad-e895-401f-9905-a977adc6c451" />
 
 <img width="773" height="363" alt="web-access" src="https://github.com/user-attachments/assets/f5e6fa08-5a85-4984-9de1-f3858520d3b5" />
