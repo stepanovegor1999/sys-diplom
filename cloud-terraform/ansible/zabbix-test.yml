@@ -1,0 +1,56 @@
+---
+- name: Configure Zabbix Agent 2
+  hosts: web:kibana:elasticsearch
+  become: yes
+  tasks:
+
+    - name: Установка зависимостей
+      apt:
+        name:
+          - gnupg
+          - apt-transport-https
+          - software-properties-common
+        state: present
+        update_cache: yes
+
+
+    - name: Добавление репозитория Zabbix 7.0 для Ubuntu 24.04
+      copy:
+        dest: /etc/apt/sources.list.d/zabbix.list
+        content: "deb [signed-by=/usr/share/keyrings/zabbix.gpg] https://repo.zabbix.com/zabbix/7.0/ubuntu noble main\n"
+
+    - name: Обновление кэша пакетов
+      apt:
+        update_cache: yes
+
+    - name: Установка Zabbix Agent 2 и плагинов
+      apt:
+        name:
+          - zabbix-agent2
+          - "zabbix-agent2-plugin-*"
+        state: present
+
+    - name: Настройка Zabbix Agent 2 (Active mode)
+      template:
+        src: zabbix_agent2.conf.j2
+        dest: /etc/zabbix/zabbix_agent2.conf
+      notify: restart zabbix-agent2
+      
+    - name: Открытие портов в ufw
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop: [10050, 10051]
+      
+    - name: Ensure Zabbix Agent 2 is running
+      service:
+        name: zabbix-agent2
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: restart zabbix-agent2
+      service:
+        name: zabbix-agent2
+        state: restarted

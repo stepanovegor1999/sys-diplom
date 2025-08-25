@@ -1,0 +1,56 @@
+- name: Установка и настройка Zabbix Agent
+  hosts: web:kibana:elasticsearch:bastion
+  become: true
+  vars:
+    zabbix_server: "zabbix.ru-central1.internal"
+
+  tasks:
+    - name: Установка зависимостей
+      apt:
+        name: gnupg,apt-transport-https,software-properties-common
+        state: present
+        update_cache: yes
+
+    - name: Добавление GPG ключа Zabbix
+      apt_key:
+        url: https://repo.zabbix.com/zabbix-official-repo.key
+        state: present
+
+    - name: Добавление репозитория Zabbix 7.0 для Ubuntu 24.04
+      apt_repository:
+        repo: "deb https://repo.zabbix.com/zabbix/7.0/ubuntu noble main"
+        state: present
+        filename: "zabbix"
+
+    - name: Обновление кэша пакетов
+      apt:
+        update_cache: yes
+
+    - name: Установка zabbix-agent
+      apt:
+        name: zabbix-agent
+        state: present
+
+    - name: Настройка Server
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: '^Server='
+        line: "Server={{ zabbix_server }}"
+
+    - name: Настройка ServerActive
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: '^ServerActive='
+        line: "ServerActive={{ zabbix_server }}"
+
+    - name: Настройка Hostname
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: '^Hostname='
+        line: "Hostname={{ inventory_hostname }}"
+
+    - name: Перезапуск и включение zabbix-agent
+      systemd:
+        name: zabbix-agent
+        state: restarted
+        enabled: yes

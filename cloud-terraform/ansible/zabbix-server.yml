@@ -40,7 +40,7 @@
           - zabbix-frontend-php
           - zabbix-apache-conf
           - zabbix-sql-scripts
-          - zabbix-agent
+          - zabbix-agent2
           - php8.3-pgsql
           - php8.3-gd
           - php8.3-xml

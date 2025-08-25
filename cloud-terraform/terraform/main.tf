@@ -146,14 +146,7 @@ resource "yandex_vpc_security_group" "monitoring" {
   }
 
   ingress {
-    description    = "Zabbix agent port"
-    protocol       = "TCP"
-    port           = 10050
-    v4_cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description    = "Zabbix server port"
+    description    = "Zabbix server port for active agents"
     protocol       = "TCP"
     port           = 10051
     v4_cidr_blocks = ["0.0.0.0/0"]
