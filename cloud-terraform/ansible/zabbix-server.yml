@@ -1,3 +1,4 @@
+---
 - name: Установка Zabbix Server с веб-интерфейсом (PostgreSQL)
   hosts: zabbix-server
   become: yes
@@ -86,7 +87,6 @@
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO {{ db_user }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO {{ db_user }};
 
-
     - name: Настройка PHP timezone и конфиг Zabbix
       block:
         - lineinfile:
@@ -110,6 +110,23 @@
       notify:
         - restart apache
         - restart zabbix-server
+
+    - name: Настройка zabbix-agent2
+      block:
+        - lineinfile:
+            path: /etc/zabbix/zabbix_agent2.conf
+            regexp: '^Server='
+            line: "Server=127.0.0.1"
+        - lineinfile:
+            path: /etc/zabbix/zabbix_agent2.conf
+            regexp: '^ServerActive='
+            line: "ServerActive=127.0.0.1"
+        - lineinfile:
+            path: /etc/zabbix/zabbix_agent2.conf
+            regexp: '^Hostname='
+            line: "Hostname={{ inventory_hostname }}"
+      notify:
+        - restart zabbix-agent2
 
     - name: Настройка виртуального хоста и включение сайта
       block:
@@ -136,13 +153,6 @@
             state: absent
       notify: restart apache
 
-    - name: Открытие портов в ufw
-      ufw:
-        rule: allow
-        port: "{{ item }}"
-        proto: tcp
-      loop: [80, 10050, 10051]
-
     - name: Включение сервисов
       systemd:
         name: "{{ item }}"
@@ -151,7 +161,7 @@
       loop:
         - apache2
         - zabbix-server
-        - zabbix-agent
+        - zabbix-agent2
 
     - name: Ожидание запуска Zabbix server
       wait_for:
@@ -168,4 +178,9 @@
     - name: restart zabbix-server
       service:
         name: zabbix-server
+        state: restarted
+
+    - name: restart zabbix-agent2
+      service:
+        name: zabbix-agent2
         state: restarted

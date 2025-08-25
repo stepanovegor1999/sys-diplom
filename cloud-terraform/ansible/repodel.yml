@@ -1,0 +1,14 @@
+---
+- name: Remove Zabbix repository
+  hosts: web:kibana:elasticsearch
+  become: yes
+
+  tasks:
+    - name: Удалить файл репозитория Zabbix
+      file:
+        path: /etc/apt/sources.list.d/zabbix.list
+        state: absent
+
+    - name: Очистка кэша apt
+      apt:
+        update_cache: yes

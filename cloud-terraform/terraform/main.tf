@@ -22,7 +22,7 @@ resource "yandex_vpc_network" "main" {
   name = "web-network"
 }
 
-# Публичная подсеть (для bastion, zabbix, kibana, ALB)
+# Публичная подсеть
 resource "yandex_vpc_subnet" "public" {
   name           = "public-subnet"
   zone           = "ru-central1-a"
@@ -30,7 +30,7 @@ resource "yandex_vpc_subnet" "public" {
   v4_cidr_blocks = ["192.168.0.0/24"]
 }
 
-# Приватные подсети с привязкой Route Table
+# Приватные подсети
 resource "yandex_vpc_subnet" "private_a" {
   name           = "private-a"
   zone           = "ru-central1-a"
@@ -73,9 +73,10 @@ resource "yandex_vpc_route_table" "private" {
 # -------------------
 # Security Groups
 # -------------------
+
+# Bastion SG
 resource "yandex_vpc_security_group" "bastion" {
   name        = "bastion-sg"
-  description = "Security group for bastion host"
   network_id  = yandex_vpc_network.main.id
 
   ingress {
@@ -85,40 +86,19 @@ resource "yandex_vpc_security_group" "bastion" {
     v4_cidr_blocks = ["0.0.0.0/0"]
   }
 
-  egress {
-    description    = "Any outgoing traffic"
-    protocol       = "ANY"
+  ingress {
+    description    = "Ping"
+    protocol       = "ICMP"
     v4_cidr_blocks = ["0.0.0.0/0"]
   }
-}
-
-# Web Security Group
-resource "yandex_vpc_security_group" "web" {
-  name        = "web-sg"
-  description = "Security group for web servers"
-  network_id  = yandex_vpc_network.main.id
 
   ingress {
-    description    = "HTTP from anywhere"
+    description    = "Zabbix server port"
     protocol       = "TCP"
-    port           = 80
+    port           = 10050
     v4_cidr_blocks = ["0.0.0.0/0"]
   }
-
-  ingress {
-    description       = "SSH from bastion"
-    protocol          = "TCP"
-    port              = 22
-    security_group_id = yandex_vpc_security_group.bastion.id
-  }
-
-  ingress {
-    description       = "Zabbix agent from monitoring"
-    protocol          = "TCP"
-    port              = 10050
-    security_group_id = yandex_vpc_security_group.monitoring.id
-  }
-
+  
   egress {
     description    = "Any outgoing traffic"
     protocol       = "ANY"
@@ -126,10 +106,11 @@ resource "yandex_vpc_security_group" "web" {
   }
 }
 
+
+# Zabbix SG
 resource "yandex_vpc_security_group" "monitoring" {
-  name        = "monitoring-sg"
-  description = "Security group for monitoring server"
-  network_id  = yandex_vpc_network.main.id
+  name       = "monitoring-sg"
+  network_id = yandex_vpc_network.main.id
 
   ingress {
     description    = "HTTP from anywhere"
@@ -146,9 +127,42 @@ resource "yandex_vpc_security_group" "monitoring" {
   }
 
   ingress {
-    description    = "Zabbix server port for active agents"
+    description       = "SSH from bastion"
+    protocol          = "TCP"
+    port              = 22
+    security_group_id = yandex_vpc_security_group.bastion.id
+  }
+  
+  ingress {
+    description    = "Zabbix server port for agents"
     protocol       = "TCP"
     port           = 10051
+    v4_cidr_blocks = ["0.0.0.0/0"]
+  }
+  
+  ingress {
+    description    = "Zabbix server port"
+    protocol       = "TCP"
+    port           = 10050
+    v4_cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description    = "Any outgoing traffic"
+    protocol       = "ANY"
+    v4_cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Web SG
+resource "yandex_vpc_security_group" "web" {
+  name       = "web-sg"
+  network_id = yandex_vpc_network.main.id
+
+  ingress {
+    description    = "HTTP from anywhere"
+    protocol       = "TCP"
+    port           = 80
     v4_cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -159,6 +173,13 @@ resource "yandex_vpc_security_group" "monitoring" {
     security_group_id = yandex_vpc_security_group.bastion.id
   }
 
+  ingress {
+    description       = "Zabbix agent from Zabbix server"
+    protocol          = "TCP"
+    port              = 10050
+    security_group_id = yandex_vpc_security_group.monitoring.id
+  }
+
   egress {
     description    = "Any outgoing traffic"
     protocol       = "ANY"
@@ -166,10 +187,10 @@ resource "yandex_vpc_security_group" "monitoring" {
   }
 }
 
+# Kibana SG
 resource "yandex_vpc_security_group" "kibana" {
-  name        = "kibana-sg"
-  description = "Security group for Kibana server"
-  network_id  = yandex_vpc_network.main.id
+  name       = "kibana-sg"
+  network_id = yandex_vpc_network.main.id
 
   ingress {
     description    = "HTTP from anywhere"
@@ -199,6 +220,13 @@ resource "yandex_vpc_security_group" "kibana" {
     security_group_id = yandex_vpc_security_group.bastion.id
   }
 
+  ingress {
+    description       = "Zabbix agent from Zabbix server"
+    protocol          = "TCP"
+    port              = 10050
+    security_group_id = yandex_vpc_security_group.monitoring.id
+  }
+
   egress {
     description    = "Any outgoing traffic"
     protocol       = "ANY"
@@ -206,10 +234,10 @@ resource "yandex_vpc_security_group" "kibana" {
   }
 }
 
+# Elasticsearch SG
 resource "yandex_vpc_security_group" "elasticsearch" {
-  name        = "elasticsearch-sg"
-  description = "Security group for Elasticsearch server"
-  network_id  = yandex_vpc_network.main.id
+  name       = "elasticsearch-sg"
+  network_id = yandex_vpc_network.main.id
 
   ingress {
     description       = "Elasticsearch HTTP from Kibana"
@@ -233,7 +261,7 @@ resource "yandex_vpc_security_group" "elasticsearch" {
   }
 
   ingress {
-    description       = "Zabbix agent from monitoring"
+    description       = "Zabbix agent from Zabbix server"
     protocol          = "TCP"
     port              = 10050
     security_group_id = yandex_vpc_security_group.monitoring.id
@@ -247,7 +275,7 @@ resource "yandex_vpc_security_group" "elasticsearch" {
 }
 
 # -------------------
-# Ubuntu image
+# Ubuntu Image
 # -------------------
 data "yandex_compute_image" "ubuntu" {
   family = "ubuntu-2404-lts"
@@ -262,7 +290,6 @@ locals {
     memory        = 4
     core_fraction = 20
   }
-
   disk_size = 20
 }
 
@@ -362,7 +389,7 @@ resource "yandex_compute_instance" "s2" {
   scheduling_policy { preemptible = true }
 }
 
-# Zabbix
+# Zabbix server
 resource "yandex_compute_instance" "zabbix" {
   name        = "zabbix"
   hostname    = "zabbix"

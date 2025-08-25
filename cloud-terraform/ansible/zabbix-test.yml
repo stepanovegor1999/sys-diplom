@@ -1,23 +1,36 @@
+
 ---
-- name: Configure Zabbix Agent 2
-  hosts: web:kibana:elasticsearch
+- name: Configure Zabbix Agent 2 via zabbix-release package
+  hosts: web:kibana:elasticsearch:bastion
   become: yes
+  vars:
+    zabbix_version: "7.0"
+    ubuntu_version: "24.04"
+
   tasks:
-
-    - name: Установка зависимостей
+    - name: Удаление старого zabbix-release (если установлен)
       apt:
-        name:
-          - gnupg
-          - apt-transport-https
-          - software-properties-common
+        name: zabbix-release
+        state: absent
+        purge: yes
+      ignore_errors: yes
+
+    - name: Удаление старого Zabbix Agent 2 (если установлен)
+      apt:
+        name: zabbix-agent2
+        state: absent
+        purge: yes
+      ignore_errors: yes
+
+    - name: Скачивание пакета zabbix-release
+      get_url:
+        url: "https://repo.zabbix.com/zabbix/7.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_7.0+ubuntu24.04_all.deb"
+        dest: "/tmp/zabbix-release.deb"
+
+    - name: Установка пакета zabbix-release
+      apt:
+        deb: "/tmp/zabbix-release.deb"
         state: present
-        update_cache: yes
-
-
-    - name: Добавление репозитория Zabbix 7.0 для Ubuntu 24.04
-      copy:
-        dest: /etc/apt/sources.list.d/zabbix.list
-        content: "deb [signed-by=/usr/share/keyrings/zabbix.gpg] https://repo.zabbix.com/zabbix/7.0/ubuntu noble main\n"
 
     - name: Обновление кэша пакетов
       apt:
@@ -27,22 +40,15 @@
       apt:
         name:
           - zabbix-agent2
-          - "zabbix-agent2-plugin-*"
         state: present
+        force: yes
 
-    - name: Настройка Zabbix Agent 2 (Active mode)
+    - name: Настройка Zabbix Agent 2
       template:
         src: zabbix_agent2.conf.j2
         dest: /etc/zabbix/zabbix_agent2.conf
       notify: restart zabbix-agent2
-      
-    - name: Открытие портов в ufw
-      ufw:
-        rule: allow
-        port: "{{ item }}"
-        proto: tcp
-      loop: [10050, 10051]
-      
+
     - name: Ensure Zabbix Agent 2 is running
       service:
         name: zabbix-agent2
