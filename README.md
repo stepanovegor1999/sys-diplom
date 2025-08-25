@@ -20,6 +20,7 @@ Zabbix: http://62.84.124.214
 Создайте две ВМ в разных зонах, установите на них сервер nginx, если его там нет. ОС и содержимое ВМ должно быть идентичным, это будут наши веб-сервера.
 
 Используйте набор статичных файлов для сайта. Можно переиспользовать сайт из домашнего задания.
+
 РЕШЕНИЕ:
 <img width="378" height="360" alt="nginx-ansible" src="https://github.com/user-attachments/assets/57d6e2ad-e895-401f-9905-a977adc6c451" />
 
@@ -35,29 +36,34 @@ Zabbix: http://62.84.124.214
 Настройка балансировщика:
 
 1. Создайте [Target Group](https://cloud.yandex.com/docs/application-load-balancer/concepts/target-group), включите в неё две созданных ВМ.
+2. 
 РЕШЕНИЕ:
 
 <img width="488" height="352" alt="target group" src="https://github.com/user-attachments/assets/df1a2570-484d-4088-ab89-0b64b42080c9" />
 
-2. Создайте [Backend Group](https://cloud.yandex.com/docs/application-load-balancer/concepts/backend-group), настройте backends на target group, ранее созданную. Настройте healthcheck на корень (/) и порт 80, протокол HTTP. 
+2. Создайте [Backend Group](https://cloud.yandex.com/docs/application-load-balancer/concepts/backend-group), настройте backends на target group, ранее созданную. Настройте healthcheck на корень (/) и порт 80, протокол HTTP.
+3. 
 РЕШЕНИЕ:
 <img width="716" height="416" alt="web-backend group" src="https://github.com/user-attachments/assets/f45ccceb-1daa-4604-ba75-0d6b84422947" />
 
-3. Создайте [HTTP router](https://cloud.yandex.com/docs/application-load-balancer/concepts/http-router). Путь укажите — /, backend group — созданную ранее.
+4. Создайте [HTTP router](https://cloud.yandex.com/docs/application-load-balancer/concepts/http-router). Путь укажите — /, backend group — созданную ранее.
+5. 
 РЕШЕНИЕ:
 <img width="722" height="473" alt="router" src="https://github.com/user-attachments/assets/365da542-f112-492f-9782-ab88413b0ac6" />
 
 
-4. Создайте [Application load balancer](https://cloud.yandex.com/en/docs/application-load-balancer/) для распределения трафика на веб-сервера, созданные ранее. Укажите HTTP router, созданный ранее, задайте listener тип auto, порт 80.
+6. Создайте [Application load balancer](https://cloud.yandex.com/en/docs/application-load-balancer/) для распределения трафика на веб-сервера, созданные ранее. Укажите HTTP router, созданный ранее, задайте listener тип auto, порт 80.
 
 Протестируйте сайт
 `curl -v <публичный IP балансера>:80` 
+
 РЕШЕНИЕ:
 <img width="708" height="379" alt="curl-web-load balancer" src="https://github.com/user-attachments/assets/bf8d55bb-f0e6-4b91-8fea-2a29a9938c19" />
 <img width="706" height="733" alt="web-alb-listener" src="https://github.com/user-attachments/assets/b67944be-a03b-4855-b6a8-777e80a59747" />
 
 ### Мониторинг
 Создайте ВМ, разверните на ней Zabbix. На каждую ВМ установите Zabbix Agent, настройте агенты на отправление метрик в Zabbix. 
+
 РЕШЕНИЕ:
 
 <img width="675" height="1040" alt="zabbix-server-ansible" src="https://github.com/user-attachments/assets/65259022-9e98-4bd6-a897-9979116954e3" />
@@ -94,6 +100,7 @@ Cоздайте ВМ, разверните на ней Elasticsearch. Устан
 <img width="1585" height="308" alt="public ips" src="https://github.com/user-attachments/assets/4038189e-e2db-4b3c-8c28-895c45fbebef" />
 
 Настройте [Security Groups](https://cloud.yandex.com/docs/vpc/concepts/security-groups) соответствующих сервисов на входящий трафик только к нужным портам.
+
 РЕШЕНИЕ:
 <img width="1225" height="412" alt="sg" src="https://github.com/user-attachments/assets/c3d0926b-8d04-4238-9ebf-a412a273278e" />
 
@@ -102,6 +109,7 @@ Cоздайте ВМ, разверните на ней Elasticsearch. Устан
 Скриншот выше
 
 Исходящий доступ в интернет для ВМ внутреннего контура через [NAT-шлюз](https://yandex.cloud/ru/docs/vpc/operations/create-nat-gateway).
+
 РЕШЕНИЕ:
 <img width="762" height="415" alt="Доступ в интернет через nat шлюз" src="https://github.com/user-attachments/assets/5c7c1409-ae54-4a3f-bde2-f04ed46ec795" />
 
@@ -109,6 +117,7 @@ Cоздайте ВМ, разверните на ней Elasticsearch. Устан
 
 ### Резервное копирование
 Создайте snapshot дисков всех ВМ. Ограничьте время жизни snaphot в неделю. Сами snaphot настройте на ежедневное копирование.
+
 РЕШЕНИЕ:
 <img width="1772" height="549" alt="snapshot" src="https://github.com/user-attachments/assets/4ad36b94-0bb3-468b-a084-3381fadb78e1" />
 <img width="760" height="650" alt="schedule snapshot" src="https://github.com/user-attachments/assets/f6f161d8-1f48-446f-b75f-29b7e3cc9fc3" />
