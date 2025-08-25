@@ -562,3 +562,45 @@ resource "yandex_alb_load_balancer" "web_alb" {
     }
   }
 }
+# -------------------
+# Генерация Ansible inventory
+# -------------------
+resource "local_file" "ansible_inventory" {
+  filename = "/mnt/c/sys-diplom/cloud-terraform/ansible/inventory.ini"
+  content  = <<EOT
+[bastion]
+bastion ansible_host=${yandex_compute_instance.bastion.network_interface.0.nat_ip_address} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+
+[web]
+s1.ru-central1.internal ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ProxyJump=ubuntu@${yandex_compute_instance.bastion.network_interface.0.nat_ip_address}'
+s2.ru-central1.internal ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ProxyJump=ubuntu@${yandex_compute_instance.bastion.network_interface.0.nat_ip_address}'
+
+[zabbix-server]
+zabbix.ru-central1.internal ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ProxyJump=ubuntu@${yandex_compute_instance.bastion.network_interface.0.nat_ip_address}'
+
+[kibana]
+kibana.ru-central1.internal ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ProxyJump=ubuntu@${yandex_compute_instance.bastion.network_interface.0.nat_ip_address}'
+
+[elasticsearch]
+elastic.ru-central1.internal ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ProxyJump=ubuntu@${yandex_compute_instance.bastion.network_interface.0.nat_ip_address}'
+EOT
+}
+# -------------------
+# Генерация zabbix_agent2_conf
+# -------------------
+resource "local_file" "zabbix_agent2_conf" {
+  filename = "/mnt/c/sys-diplom/cloud-terraform/ansible/zabbix_agent2.conf.j2"
+  content  = <<EOT
+PidFile=/var/run/zabbix/zabbix_agent2.pid
+LogFile=/var/log/zabbix/zabbix_agent2.log
+LogFileSize=0
+Server=${yandex_compute_instance.zabbix.network_interface.0.ip_address},${yandex_compute_instance.zabbix.network_interface.0.nat_ip_address}
+ListenPort=10050
+ListenIP=0.0.0.0
+Hostname={{ ansible_hostname }}
+Include=/etc/zabbix/zabbix_agent2.d/*.conf
+PluginSocket=/run/zabbix/agent.plugin.sock
+ControlSocket=/run/zabbix/agent.sock
+Include=/etc/zabbix/zabbix_agent2.d/plugins.d/*.conf
+EOT
+}

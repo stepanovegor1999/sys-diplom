@@ -8,20 +8,6 @@
     ubuntu_version: "24.04"
 
   tasks:
-    - name: Удаление старого zabbix-release (если установлен)
-      apt:
-        name: zabbix-release
-        state: absent
-        purge: yes
-      ignore_errors: yes
-
-    - name: Удаление старого Zabbix Agent 2 (если установлен)
-      apt:
-        name: zabbix-agent2
-        state: absent
-        purge: yes
-      ignore_errors: yes
-
     - name: Скачивание пакета zabbix-release
       get_url:
         url: "https://repo.zabbix.com/zabbix/7.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_7.0+ubuntu24.04_all.deb"
@@ -36,20 +22,20 @@
       apt:
         update_cache: yes
 
-    - name: Установка Zabbix Agent 2 и плагинов
+    - name: Установка Zabbix Agent 2
       apt:
         name:
           - zabbix-agent2
         state: present
         force: yes
 
-    - name: Настройка Zabbix Agent 2
+    - name: Копируем конфигурацию
       template:
         src: zabbix_agent2.conf.j2
         dest: /etc/zabbix/zabbix_agent2.conf
       notify: restart zabbix-agent2
 
-    - name: Ensure Zabbix Agent 2 is running
+    - name: Проверяем запущен ли Zabbix Agent 2 is running
       service:
         name: zabbix-agent2
         state: started
