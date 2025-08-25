@@ -87,7 +87,7 @@
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO {{ db_user }};
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO {{ db_user }};
 
-    - name: Настройка PHP timezone и конфиг Zabbix
+    - name: Настройка PHP и конфигурации Zabbix
       block:
         - lineinfile:
             path: /etc/php/8.3/apache2/php.ini
@@ -128,7 +128,7 @@
       notify:
         - restart zabbix-agent2
 
-    - name: Настройка виртуального хоста и включение сайта
+    - name: Копирование конфигурации
       block:
         - copy:
             dest: /etc/apache2/sites-available/zabbix.conf
