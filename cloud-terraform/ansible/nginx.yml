@@ -3,7 +3,6 @@
   become: yes
   vars:
     site_title: "Netology Diplom"
-    site_body: "Netology Diplom"
 
   tasks:
 

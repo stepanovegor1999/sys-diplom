@@ -35,7 +35,7 @@
         dest: /etc/zabbix/zabbix_agent2.conf
       notify: restart zabbix-agent2
 
-    - name: Проверяем запущен ли Zabbix Agent 2 is running
+    - name: Проверяем запущен ли Zabbix Agent 2
       service:
         name: zabbix-agent2
         state: started
