@@ -43,17 +43,17 @@ Zabbix: http://62.84.124.214
 <img width="488" height="352" alt="target group" src="https://github.com/user-attachments/assets/df1a2570-484d-4088-ab89-0b64b42080c9" />
 
 2. Создайте [Backend Group](https://cloud.yandex.com/docs/application-load-balancer/concepts/backend-group), настройте backends на target group, ранее созданную. Настройте healthcheck на корень (/) и порт 80, протокол HTTP.
-3. 
+
 РЕШЕНИЕ:
 <img width="716" height="416" alt="web-backend group" src="https://github.com/user-attachments/assets/f45ccceb-1daa-4604-ba75-0d6b84422947" />
 
-4. Создайте [HTTP router](https://cloud.yandex.com/docs/application-load-balancer/concepts/http-router). Путь укажите — /, backend group — созданную ранее.
-5. 
+3. Создайте [HTTP router](https://cloud.yandex.com/docs/application-load-balancer/concepts/http-router). Путь укажите — /, backend group — созданную ранее.
+ 
 РЕШЕНИЕ:
 <img width="722" height="473" alt="router" src="https://github.com/user-attachments/assets/365da542-f112-492f-9782-ab88413b0ac6" />
 
 
-6. Создайте [Application load balancer](https://cloud.yandex.com/en/docs/application-load-balancer/) для распределения трафика на веб-сервера, созданные ранее. Укажите HTTP router, созданный ранее, задайте listener тип auto, порт 80.
+4. Создайте [Application load balancer](https://cloud.yandex.com/en/docs/application-load-balancer/) для распределения трафика на веб-сервера, созданные ранее. Укажите HTTP router, созданный ранее, задайте listener тип auto, порт 80.
 
 Протестируйте сайт
 `curl -v <публичный IP балансера>:80` 
