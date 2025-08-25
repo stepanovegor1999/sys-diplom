@@ -26,9 +26,10 @@
 
 Настройка балансировщика:
 
-1. Создайте [Target Group](https://cloud.yandex.com/docs/application-load-balancer/concepts/target-group), включите в неё две созданных ВМ. <img width="488" height="352" alt="target group" src="https://github.com/user-attachments/assets/df1a2570-484d-4088-ab89-0b64b42080c9" />
+1. Создайте [Target Group](https://cloud.yandex.com/docs/application-load-balancer/concepts/target-group), включите в неё две созданных ВМ.
+2. <img width="488" height="352" alt="target group" src="https://github.com/user-attachments/assets/df1a2570-484d-4088-ab89-0b64b42080c9" />
 
-2. Создайте [Backend Group](https://cloud.yandex.com/docs/application-load-balancer/concepts/backend-group), настройте backends на target group, ранее созданную. Настройте healthcheck на корень (/) и порт 80, протокол HTTP. 
+3. Создайте [Backend Group](https://cloud.yandex.com/docs/application-load-balancer/concepts/backend-group), настройте backends на target group, ранее созданную. Настройте healthcheck на корень (/) и порт 80, протокол HTTP. 
 
 <img width="716" height="416" alt="web-backend group" src="https://github.com/user-attachments/assets/f45ccceb-1daa-4604-ba75-0d6b84422947" />
 
