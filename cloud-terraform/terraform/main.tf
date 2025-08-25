@@ -80,7 +80,7 @@ resource "yandex_vpc_security_group" "bastion" {
   network_id  = yandex_vpc_network.main.id
 
   ingress {
-    description    = "SSH from anywhere"
+    description    = "SSH"
     protocol       = "TCP"
     port           = 22
     v4_cidr_blocks = ["0.0.0.0/0"]
@@ -113,14 +113,14 @@ resource "yandex_vpc_security_group" "monitoring" {
   network_id = yandex_vpc_network.main.id
 
   ingress {
-    description    = "HTTP from anywhere"
+    description    = "HTTP"
     protocol       = "TCP"
     port           = 80
     v4_cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    description    = "HTTPS from anywhere"
+    description    = "HTTPS"
     protocol       = "TCP"
     port           = 443
     v4_cidr_blocks = ["0.0.0.0/0"]
@@ -131,13 +131,6 @@ resource "yandex_vpc_security_group" "monitoring" {
     protocol          = "TCP"
     port              = 22
     security_group_id = yandex_vpc_security_group.bastion.id
-  }
-  
-  ingress {
-    description    = "Zabbix server port for agents"
-    protocol       = "TCP"
-    port           = 10051
-    v4_cidr_blocks = ["0.0.0.0/0"]
   }
   
   ingress {
@@ -160,7 +153,7 @@ resource "yandex_vpc_security_group" "web" {
   network_id = yandex_vpc_network.main.id
 
   ingress {
-    description    = "HTTP from anywhere"
+    description    = "HTTP"
     protocol       = "TCP"
     port           = 80
     v4_cidr_blocks = ["0.0.0.0/0"]
@@ -174,7 +167,7 @@ resource "yandex_vpc_security_group" "web" {
   }
 
   ingress {
-    description       = "Zabbix agent from Zabbix server"
+    description       = "Zabbix agent"
     protocol          = "TCP"
     port              = 10050
     security_group_id = yandex_vpc_security_group.monitoring.id
@@ -193,21 +186,21 @@ resource "yandex_vpc_security_group" "kibana" {
   network_id = yandex_vpc_network.main.id
 
   ingress {
-    description    = "HTTP from anywhere"
+    description    = "HTTP"
     protocol       = "TCP"
     port           = 80
     v4_cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    description    = "HTTPS from anywhere"
+    description    = "HTTPS"
     protocol       = "TCP"
     port           = 443
     v4_cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    description    = "Kibana default port"
+    description    = "Kibana"
     protocol       = "TCP"
     port           = 5601
     v4_cidr_blocks = ["0.0.0.0/0"]
@@ -221,7 +214,7 @@ resource "yandex_vpc_security_group" "kibana" {
   }
 
   ingress {
-    description       = "Zabbix agent from Zabbix server"
+    description       = "Zabbix"
     protocol          = "TCP"
     port              = 10050
     security_group_id = yandex_vpc_security_group.monitoring.id
@@ -252,6 +245,14 @@ resource "yandex_vpc_security_group" "elasticsearch" {
     port           = 9300
     v4_cidr_blocks = ["192.168.0.0/16"]
   }
+  
+  ingress {
+    description       = "Elasticsearch HTTP from web servers"
+    protocol          = "TCP"
+    port              = 9200
+    security_group_id = yandex_vpc_security_group.web.id
+  }
+
 
   ingress {
     description       = "SSH from bastion"
@@ -287,7 +288,7 @@ data "yandex_compute_image" "ubuntu" {
 locals {
   vm_resources = {
     cores         = 2
-    memory        = 4
+    memory        = 2
     core_fraction = 20
   }
   disk_size = 20
@@ -353,8 +354,6 @@ resource "yandex_compute_instance" "s1" {
   metadata = {
     ssh-keys = "ubuntu:${file("~/.ssh/id_rsa.pub")}"
   }
-
-  scheduling_policy { preemptible = true }
 }
 
 resource "yandex_compute_instance" "s2" {
@@ -385,8 +384,6 @@ resource "yandex_compute_instance" "s2" {
   metadata = {
     ssh-keys = "ubuntu:${file("~/.ssh/id_rsa.pub")}"
   }
-
-  scheduling_policy { preemptible = true }
 }
 
 # Zabbix server
@@ -482,9 +479,7 @@ resource "yandex_compute_instance" "kibana" {
   }
 }
 
-# -------------------
 # Application Load Balancer
-# -------------------
 resource "yandex_alb_target_group" "web_tg" {
   name = "web-target-group"
 
@@ -562,6 +557,42 @@ resource "yandex_alb_load_balancer" "web_alb" {
     }
   }
 }
+
+#snap
+resource "yandex_compute_snapshot_schedule" "snapshot" {
+  name        = "snapshot"
+  description = "Snapshots"
+
+  schedule_policy {
+    expression = "0 1 * * *"
+  }
+
+  retention_period = "168h"
+
+  snapshot_spec {
+    description = "retention-snapshot"
+  }
+
+  disk_ids = [
+    yandex_compute_instance.s1.boot_disk[0].disk_id,
+    yandex_compute_instance.s2.boot_disk[0].disk_id,
+    yandex_compute_instance.bastion.boot_disk[0].disk_id,
+    yandex_compute_instance.zabbix.boot_disk[0].disk_id,
+    yandex_compute_instance.elastic.boot_disk[0].disk_id,
+    yandex_compute_instance.kibana.boot_disk[0].disk_id,
+  ]
+
+  depends_on = [
+    yandex_compute_instance.s1,
+    yandex_compute_instance.s2,
+    yandex_compute_instance.bastion,
+    yandex_compute_instance.zabbix,
+    yandex_compute_instance.elastic,
+    yandex_compute_instance.kibana
+  ]
+}
+
+
 # -------------------
 # Генерация Ansible inventory
 # -------------------
